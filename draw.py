@@ -62,7 +62,7 @@ Layer = TypedDict(
 
 
 class Keymap:
-    def __init__(self, split: bool, rows: int, columns: int, thumbs: Optional[int], layers: Mapping[str, Layer]):
+    def __init__(self, split: bool, rows: int, columns: int, layers: Mapping[str, Layer], thumbs: Optional[int] = None):
         self.split = split
         self.rows = rows
         self.columns = columns
