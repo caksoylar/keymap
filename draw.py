@@ -2,7 +2,7 @@
 
 import sys
 from html import escape
-from typing import Literal, Optional, Tuple, Sequence, Mapping, Union
+from typing import Literal, Optional, Sequence, Mapping, Union
 
 import yaml
 from pydantic import BaseModel
@@ -45,10 +45,21 @@ STYLE = """
 """
 
 
+KeyType = Literal["", "held", "combo"]
+
+
 class Key(BaseModel):
     tap: str
     hold: str = ""
-    type: Literal["", "held", "combo"] = ""
+    type: KeyType = ""
+
+    @classmethod
+    def from_key_spec(cls, key_spec: Union[str, 'Key'], type: Optional[KeyType] = None):
+        if isinstance(key_spec, str):
+            return cls(tap=key_spec, type=type) if type is not None else cls(tap=key_spec)
+        if type is not None:
+            key_spec.type = type
+        return key_spec
 
 
 KeySpec = Union[str, Key]
@@ -110,26 +121,18 @@ class Keymap:
             print(' font-weight="bold"', end='')
         print(f'>{escape(text)}</text>')
 
-    @staticmethod
-    def _keyspec_to_props(key_spec: KeySpec) -> Tuple[str, str, str]:
-        if isinstance(key_spec, str):
-            key = Key(tap=key_spec)
-        else:
-            key = Key(**key_spec.dict())
-        return key.tap, key.hold, key.type
-
     def print_key(self, x: float, y: float, key_spec: KeySpec) -> None:
-        tap, hold, kc = self._keyspec_to_props(key_spec)
-        tap_words = tap.split()
-        self._draw_rect(x + INNER_PAD_W, y + INNER_PAD_H, KEY_W, KEY_H, kc)
+        key = Key.from_key_spec(key_spec)
+        tap_words = key.tap.split()
+        self._draw_rect(x + INNER_PAD_W, y + INNER_PAD_H, KEY_W, KEY_H, key.type)
 
         y_tap = y + (KEYSPACE_H - (len(tap_words) - 1) * LINE_SPACING) / 2
         for word in tap_words:
             self._draw_text(x + KEYSPACE_W / 2, y_tap, word)
             y_tap += LINE_SPACING
-        if hold:
+        if key.hold:
             y_hold = y + KEYSPACE_H - LINE_SPACING / 2
-            self._draw_text(x + KEYSPACE_W / 2, y_hold, hold, small=True)
+            self._draw_text(x + KEYSPACE_W / 2, y_hold, key.hold, small=True)
 
     def print_combo(self, x: float, y: float, combo_spec: ComboSpec) -> None:
         pos_idx = combo_spec.positions
@@ -141,14 +144,14 @@ class Keymap:
         rows = [p // ((2 if self.layout.split else 1) * self.layout.columns) for p in pos_idx]
         x_pos = [x + c * KEYSPACE_W + (OUTER_PAD_W if self.layout.split and c >= self.layout.columns else 0) for c in cols]
         y_pos = [y + r * KEYSPACE_H for r in rows]
-        tap, _, _ = self._keyspec_to_props(combo_spec.key)
+        key = Key.from_key_spec(combo_spec.key, "combo")
 
         x_mid, y_mid = sum(x_pos) / len(pos_idx), sum(y_pos) / len(pos_idx)
 
         self._draw_rect(
-            x_mid + INNER_PAD_W + KEY_W / 4, y_mid + INNER_PAD_H + KEY_H / 4, KEY_W / 2, KEY_H / 2, "combo"
+            x_mid + INNER_PAD_W + KEY_W / 4, y_mid + INNER_PAD_H + KEY_H / 4, KEY_W / 2, KEY_H / 2, key.type
         )
-        self._draw_text(x_mid + KEYSPACE_W / 2, y_mid + INNER_PAD_H + KEY_H / 2, tap, small=True)
+        self._draw_text(x_mid + KEYSPACE_W / 2, y_mid + INNER_PAD_H + KEY_H / 2, key.tap, small=True)
 
     def print_row(self, x: float, y: float, row: KeyRow, is_thumbs: bool = False) -> None:
         assert len(row) == (self.layout.columns if not is_thumbs else self.layout.thumbs)
