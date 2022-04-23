@@ -45,20 +45,15 @@ STYLE = """
 """
 
 
-KeyType = Literal["", "held", "combo"]
-
-
 class Key(BaseModel):
     tap: str
     hold: str = ""
-    type: KeyType = ""
+    type: Literal["", "held"] = ""
 
     @classmethod
-    def from_key_spec(cls, key_spec: Union[str, 'Key'], type: Optional[KeyType] = None):
+    def from_key_spec(cls, key_spec: Union[str, "Key"]):
         if isinstance(key_spec, str):
-            return cls(tap=key_spec, type=type) if type is not None else cls(tap=key_spec)
-        if type is not None:
-            key_spec.type = type
+            return cls(tap=key_spec)
         return key_spec
 
 
@@ -144,13 +139,11 @@ class Keymap:
         rows = [p // ((2 if self.layout.split else 1) * self.layout.columns) for p in pos_idx]
         x_pos = [x + c * KEYSPACE_W + (OUTER_PAD_W if self.layout.split and c >= self.layout.columns else 0) for c in cols]
         y_pos = [y + r * KEYSPACE_H for r in rows]
-        key = Key.from_key_spec(combo_spec.key, "combo")
+        key = Key.from_key_spec(combo_spec.key)
 
         x_mid, y_mid = sum(x_pos) / len(pos_idx), sum(y_pos) / len(pos_idx)
 
-        self._draw_rect(
-            x_mid + INNER_PAD_W + KEY_W / 4, y_mid + INNER_PAD_H + KEY_H / 4, KEY_W / 2, KEY_H / 2, key.type
-        )
+        self._draw_rect(x_mid + INNER_PAD_W + KEY_W / 4, y_mid + INNER_PAD_H + KEY_H / 4, KEY_W / 2, KEY_H / 2, "combo")
         self._draw_text(x_mid + KEYSPACE_W / 2, y_mid + INNER_PAD_H + KEY_H / 2, key.tap, small=True)
 
     def print_row(self, x: float, y: float, row: KeyRow, is_thumbs: bool = False) -> None:
@@ -174,6 +167,7 @@ class Keymap:
             layer.right,
         )
         if self.layout.thumbs:
+            assert layer.left_thumbs and layer.right_thumbs
             self.print_row(
                 x + (self.layout.columns - self.layout.thumbs) * KEYSPACE_W,
                 y + self.layout.rows * KEYSPACE_H,
