@@ -11,14 +11,14 @@ layers:
             - [Z, X, C, V, B]
         right:
             - [Y, U, I, O, P]
-            - [M, {hold: Shift, tap: J}, {hold: Alt, tap: K}, {hold: Gui, tap: L}, {hold: Ctrl, tap: "'"}]
+            - [H, {hold: Shift, tap: J}, {hold: Alt, tap: K}, {hold: Gui, tap: L}, {hold: Ctrl, tap: "'"}]
             - [N, M, ",", ., /]
-        left-thumbs: &left-thumbs
+        left_thumbs: &left_thumbs
             - hold: Ctrl
               tap: Esc
             - hold: NAV
               tap: BSpace
-        right-thumbs: &right-thumbs
+        right_thumbs: &right_thumbs
             - hold: SYM
               tap: Space
             - hold: Shift
@@ -47,8 +47,8 @@ layers:
             - [J, L, U, Y, "'"]
             - [M, {hold: Shift, tap: N}, {hold: Alt, tap: E}, {hold: Gui, tap: I}, {hold: Ctrl, tap: O}]
             - [K, H, ",", ., /]
-        left-thumbs: *left-thumbs
-        right-thumbs: *right-thumbs
+        left_thumbs: *left_thumbs
+        right_thumbs: *right_thumbs
         combos: *combos
     GME:
         left:
@@ -59,10 +59,10 @@ layers:
             - [Y, U, I, O, P]
             - [H, J, K, L, "off"]
             - [N, M, ",", ., /]
-        left-thumbs:
+        left_thumbs:
             - Ctrl
             - Space
-        right-thumbs:
+        right_thumbs:
             - Alt
             - Enter
     SYM:
@@ -74,10 +74,10 @@ layers:
             - ["\\", "7", "8", "9", ","]
             - ["0", "4", "5", "6", "."]
             - [";", "1", "2", "3", "/"]
-        left-thumbs:
+        left_thumbs:
             - Space
             - FUN
-        right-thumbs:
+        right_thumbs:
             - {tap: "", type: held}
             - Shift
     NAV:
@@ -89,10 +89,10 @@ layers:
             - [Home, "Page Down", "Page Up", End, ""]
             - [Left, Down, Up, Right, Calc]
             - [Insert, Delete, Prev, Next, ""]
-        left-thumbs:
+        left_thumbs:
             - Ctrl
             - {tap: "", type: held}
-        right-thumbs:
+        right_thumbs:
             - FUN
             - Shift
     FUN:
@@ -104,9 +104,9 @@ layers:
             - ["Caps Lock", "", DEF, CLM, GME]
             - [BT1, BT2, BT3, BT4, BT5]
             - ["Out USB", "Out BLE", "Print Scrn", "Pause Break", "BT CLR"]
-        left-thumbs:
+        left_thumbs:
             - Reset
             - {tap: "", type: held}
-        right-thumbs:
+        right_thumbs:
             - {tap: "", type: held}
             - Reset
