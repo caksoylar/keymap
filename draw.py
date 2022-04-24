@@ -137,7 +137,7 @@ class Keymap:
         self.total_cols = 2 * self.layout.columns if self.layout.split else self.layout.columns
         self.block_w = self.layout.columns * KEYSPACE_W
         self.block_h = (self.layout.rows + (1 if self.layout.thumbs else 0)) * KEYSPACE_H
-        self.layer_w = 2 * self.block_w + OUTER_PAD_W
+        self.layer_w = (2 if self.layout.split else 1) * self.block_w + OUTER_PAD_W
         self.layer_h = self.block_h
         self.board_w = self.layer_w + 2 * OUTER_PAD_W
         self.board_h = len(self.layers) * self.layer_h + (len(self.layers) + 1) * OUTER_PAD_H
