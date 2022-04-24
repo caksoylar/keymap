@@ -2,7 +2,7 @@
 
 import sys
 from html import escape
-from itertools import zip_longest, islice
+from itertools import zip_longest, islice, chain
 from typing import Literal, Optional, Sequence, Mapping, Union
 
 import yaml
@@ -73,7 +73,7 @@ KeyBlock = Sequence[KeyRow]
 
 class Layer(BaseModel):
     left: KeyBlock = Field(..., alias="keys")
-    right: Optional[KeyBlock]
+    right: Optional[KeyBlock] = None
     left_thumbs: Optional[KeyRow] = None
     right_thumbs: Optional[KeyRow] = None
     combos: Optional[Sequence[ComboSpec]] = None
@@ -82,11 +82,11 @@ class Layer(BaseModel):
         allow_population_by_field_name = True
 
     @validator("left", "right", pre=True)
-    def get_key_block(cls, vals):
-        return [cls.get_key_row(row) for row in vals] if vals is not None else vals
+    def parse_key_block(cls, vals):
+        return [cls.parse_key_row(row) for row in vals] if vals is not None else vals
 
     @validator("left_thumbs", "right_thumbs", pre=True)
-    def get_key_row(cls, vals):
+    def parse_key_row(cls, vals):
         return [Key.from_key_spec(val) for val in vals] if vals is not None else None
 
 
@@ -124,7 +124,21 @@ class KeymapData(BaseModel):
             if layer.combos:
                 for combo in layer.combos:
                     assert len(combo.positions) == 2, "Cannot have more than two positions for combo"
-                    assert all(pos < total for pos in combo.positions), "Combo positions exceed number of non-thumb keys"
+                    assert all(pos < total for pos in combo.positions), \
+                        "Combo positions exceed number of non-thumb keys"
+        return vals
+
+    @root_validator(skip_on_failure=True)
+    def check_dimensions(cls, vals):
+        nrows, ncols, nthumbs = vals["layout"].rows, vals["layout"].columns, vals["layout"].thumbs
+        for name, layer in vals["layers"].items():
+            assert len(layer.left) == nrows and (layer.right is None or len(layer.right) == nrows), \
+                f"Number of rows do not match layout specification in layer {name}"
+            for row in chain(layer.left, layer.right) if layer.right else layer.left:
+                assert len(row) == ncols, f"Number of columns do not match layout specification in layer {name}"
+            if nthumbs:
+                assert len(layer.left_thumbs) == nthumbs and len(layer.right_thumbs) == nthumbs, \
+                    f"Number of thumb keys do not match layout specification in layer {name}"
         return vals
 
 
@@ -182,8 +196,7 @@ class Keymap:
         self._draw_rect(x_mid + INNER_PAD_W + KEY_W / 4, y_mid + INNER_PAD_H + KEY_H / 4, KEY_W / 2, KEY_H / 2, "combo")
         self._draw_text(x_mid + KEYSPACE_W / 2, y_mid + INNER_PAD_H + KEY_H / 2, combo_spec.key.tap, small=True)
 
-    def print_row(self, x: float, y: float, row: KeyRow, is_thumbs: bool = False) -> None:
-        assert len(row) == (self.layout.columns if not is_thumbs else self.layout.thumbs)
+    def print_row(self, x: float, y: float, row: KeyRow) -> None:
         lookahead_iter = zip_longest(row, islice(row, 1, None))
         for key, next_key in lookahead_iter:
             if next_key is not None and key == next_key:
@@ -197,7 +210,6 @@ class Keymap:
                 x += KEYSPACE_W
 
     def print_block(self, x: float, y: float, block: KeyBlock) -> None:
-        assert len(block) == self.layout.rows
         for row in block:
             self.print_row(x, y, row)
             y += KEYSPACE_H
@@ -205,22 +217,20 @@ class Keymap:
     def print_layer(self, x: float, y: float, name: str, layer: Layer) -> None:
         self._draw_text(KEY_W / 2, y - KEY_H / 2, f"{name}:", bold=True)
         self.print_block(x, y, layer.left)
-        if self.layout.split:
+        if layer.right:
             self.print_block(
                 x + self.block_w + OUTER_PAD_W,
                 y,
                 layer.right,
             )
-        if self.layout.thumbs:
-            assert layer.left_thumbs and layer.right_thumbs
+        if self.layout.thumbs and layer.left_thumbs and layer.right_thumbs:
             self.print_row(
                 x + (self.layout.columns - self.layout.thumbs) * KEYSPACE_W,
                 y + self.layout.rows * KEYSPACE_H,
                 layer.left_thumbs,
-                is_thumbs=True,
             )
             self.print_row(
-                x + self.block_w + OUTER_PAD_W, y + self.layout.rows * KEYSPACE_H, layer.right_thumbs, is_thumbs=True
+                x + self.block_w + OUTER_PAD_W, y + self.layout.rows * KEYSPACE_H, layer.right_thumbs
             )
         if layer.combos:
             for combo_spec in layer.combos:
