@@ -51,7 +51,7 @@ class Key(BaseModel):
     type: Literal["", "held"] = ""
 
     @classmethod
-    def from_key_spec(cls, key_spec: Union[str, "Key"]):
+    def from_key_spec(cls, key_spec: Union[str, "Key"]) -> "Key":
         if isinstance(key_spec, str):
             return cls(tap=key_spec)
         return key_spec
@@ -77,9 +77,6 @@ class Layer(BaseModel):
     combos: Optional[Sequence[ComboSpec]] = None
 
 
-Layers = Mapping[str, Layer]
-
-
 class Layout(BaseModel):
     split: bool = True
     rows: int
@@ -87,10 +84,16 @@ class Layout(BaseModel):
     thumbs: Optional[int] = None
 
 
+class KeymapData(BaseModel):
+    layout: Layout
+    layers: Mapping[str, Layer]
+
+
 class Keymap:
-    def __init__(self, layout, layers):
-        self.layout = Layout(**layout)
-        self.layers = {name: Layer(**layer) for name, layer in layers.items()}
+    def __init__(self, **kwargs) -> None:
+        kd = KeymapData(**kwargs)
+        self.layout = kd.layout
+        self.layers = kd.layers
 
         assert self.layout.split
         if self.layout.thumbs is not None:
@@ -200,7 +203,7 @@ class Keymap:
 def main() -> None:
     with open(sys.argv[1], "rb") as f:
         data = yaml.safe_load(f)
-    km = Keymap(data["layout"], data["layers"])
+    km = Keymap(**data)
     km.print_board()
 
 
