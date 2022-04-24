@@ -2,6 +2,7 @@
 
 import sys
 from html import escape
+from itertools import zip_longest, islice
 from typing import Literal, Optional, Sequence, Mapping, Union
 
 import yaml
@@ -119,18 +120,20 @@ class Keymap:
             print(' font-weight="bold"', end='')
         print(f'>{escape(text)}</text>')
 
-    def print_key(self, x: float, y: float, key_spec: KeySpec) -> None:
+    def print_key(self, x: float, y: float, key_spec: KeySpec, double: bool = False) -> None:
         key = Key.from_key_spec(key_spec)
         tap_words = key.tap.split()
-        self._draw_rect(x + INNER_PAD_W, y + INNER_PAD_H, KEY_W, KEY_H, key.type)
+        width = KEY_W if not double else 2 * KEY_W + 2 * INNER_PAD_W
+        self._draw_rect(x + INNER_PAD_W, y + INNER_PAD_H, width, KEY_H, key.type)
 
+        x_pos = x + (KEYSPACE_W / 2 if not double else KEYSPACE_W)
         y_tap = y + (KEYSPACE_H - (len(tap_words) - 1) * LINE_SPACING) / 2
         for word in tap_words:
-            self._draw_text(x + KEYSPACE_W / 2, y_tap, word)
+            self._draw_text(x_pos, y_tap, word)
             y_tap += LINE_SPACING
         if key.hold:
             y_hold = y + KEYSPACE_H - LINE_SPACING / 2
-            self._draw_text(x + KEYSPACE_W / 2, y_hold, key.hold, small=True)
+            self._draw_text(x_pos, y_hold, key.hold, small=True)
 
     def print_combo(self, x: float, y: float, combo_spec: ComboSpec) -> None:
         pos_idx = combo_spec.positions
@@ -151,9 +154,15 @@ class Keymap:
 
     def print_row(self, x: float, y: float, row: KeyRow, is_thumbs: bool = False) -> None:
         assert len(row) == (self.layout.columns if not is_thumbs else self.layout.thumbs)
-        for key_spec in row:
-            self.print_key(x, y, key_spec)
-            x += KEYSPACE_W
+        lookahead_iter = zip_longest(row, islice(row, 1, None))
+        for key_spec, next_spec in lookahead_iter:
+            if next_spec is not None and key_spec == next_spec and key_spec != "":
+                self.print_key(x, y, key_spec, double=True)
+                x += 2 * KEYSPACE_W
+                _ = next(lookahead_iter)
+            else:
+                self.print_key(x, y, key_spec)
+                x += KEYSPACE_W
 
     def print_block(self, x: float, y: float, block: KeyBlock) -> None:
         assert len(block) == self.layout.rows
