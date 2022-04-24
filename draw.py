@@ -6,7 +6,7 @@ from itertools import zip_longest, islice
 from typing import Literal, Optional, Sequence, Mapping, Union
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 
 
 KEY_W = 55
@@ -58,15 +58,16 @@ class Key(BaseModel):
         return key_spec
 
 
-KeySpec = Union[str, Key]
-
-
 class ComboSpec(BaseModel):
     positions: Sequence[int]
-    key: KeySpec
+    key: Key
+
+    @validator("key", pre=True)
+    def get_key(cls, val):
+        return Key.from_key_spec(val)
 
 
-KeyRow = Sequence[KeySpec]
+KeyRow = Sequence[Key]
 KeyBlock = Sequence[KeyRow]
 
 
@@ -76,6 +77,14 @@ class Layer(BaseModel):
     left_thumbs: Optional[KeyRow] = None
     right_thumbs: Optional[KeyRow] = None
     combos: Optional[Sequence[ComboSpec]] = None
+
+    @validator("left", "right", pre=True)
+    def get_key_block(cls, vals):
+        return [cls.get_key_row(row) for row in vals] if vals is not None else vals
+
+    @validator("left_thumbs", "right_thumbs", pre=True)
+    def get_key_row(cls, vals):
+        return [Key.from_key_spec(val) for val in vals] if vals is not None else None
 
 
 class Layout(BaseModel):
@@ -120,8 +129,7 @@ class Keymap:
             print(' font-weight="bold"', end='')
         print(f'>{escape(text)}</text>')
 
-    def print_key(self, x: float, y: float, key_spec: KeySpec, double: bool = False) -> None:
-        key = Key.from_key_spec(key_spec)
+    def print_key(self, x: float, y: float, key: Key, double: bool = False) -> None:
         tap_words = key.tap.split()
         width = KEY_W if not double else 2 * KEY_W + 2 * INNER_PAD_W
         self._draw_rect(x + INNER_PAD_W, y + INNER_PAD_H, width, KEY_H, key.type)
@@ -145,12 +153,11 @@ class Keymap:
         rows = [p // ((2 if self.layout.split else 1) * self.layout.columns) for p in pos_idx]
         x_pos = [x + c * KEYSPACE_W + (OUTER_PAD_W if self.layout.split and c >= self.layout.columns else 0) for c in cols]
         y_pos = [y + r * KEYSPACE_H for r in rows]
-        key = Key.from_key_spec(combo_spec.key)
 
         x_mid, y_mid = sum(x_pos) / len(pos_idx), sum(y_pos) / len(pos_idx)
 
         self._draw_rect(x_mid + INNER_PAD_W + KEY_W / 4, y_mid + INNER_PAD_H + KEY_H / 4, KEY_W / 2, KEY_H / 2, "combo")
-        self._draw_text(x_mid + KEYSPACE_W / 2, y_mid + INNER_PAD_H + KEY_H / 2, key.tap, small=True)
+        self._draw_text(x_mid + KEYSPACE_W / 2, y_mid + INNER_PAD_H + KEY_H / 2, combo_spec.key.tap, small=True)
 
     def print_row(self, x: float, y: float, row: KeyRow, is_thumbs: bool = False) -> None:
         assert len(row) == (self.layout.columns if not is_thumbs else self.layout.thumbs)
