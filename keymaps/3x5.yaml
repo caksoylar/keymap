@@ -5,15 +5,10 @@ layout:
     thumbs: 3
 layers:
     DEF:
-        left:
-            - [Q, W, E, R, T]
-            - [{hold: Ctrl, tap: A}, {hold: Gui, tap: S}, {hold: Alt, tap: D}, {hold: Shift, tap: F}, G]
-            - [Z, X, C, V, B]
-        right:
-            - [Y, U, I, O, P]
-            - [H, {hold: Shift, tap: J}, {hold: Alt, tap: K}, {hold: Gui, tap: L}, {hold: Ctrl, tap: "'"}]
-            - [N, M, ",", ., /]
-        left_thumbs: &left_thumbs
+        keys:
+            - [Q, W, E, R, T, Y, U, I, O, P]
+            - [{hold: Ctrl, tap: A}, {hold: Gui, tap: S}, {hold: Alt, tap: D}, {hold: Shift, tap: F}, G, H, {hold: Shift, tap: J}, {hold: Alt, tap: K}, {hold: Gui, tap: L}, {hold: Ctrl, tap: "'"}]
+            - [Z, X, C, V, B, N, M, ",", ., /]
             - hold: Gui
               tap: Tab
               type: ghost
@@ -21,7 +16,6 @@ layers:
               tap: Esc
             - hold: NAV
               tap: BSpace
-        right_thumbs: &right_thumbs
             - hold: SYM
               tap: Space
             - hold: Shift
@@ -44,64 +38,48 @@ layers:
               key: "]"
             - positions: [26, 27]
               key: "\\"
+            - positions: [27, 28]
+              key: "|"
     SYM:
-        left:
-            - ["!", "@", "#", "$", "%"]
-            - ["+", "=", "_", "-", "^"]
-            - [null, null, "¿", "*", "&"]
-        right:
-            - ["\\", "7", "8", "9", ","]
-            - ["0", "4", "5", "6", "."]
-            - [";", "1", "2", "3", "/"]
-        left_thumbs:
+        keys:
+            - ["!", "@", "#", "$", "%", "\\", "7", "8", "9", ","]
+            - ["+", "=", "_", "-", "^", "0", "4", "5", "6", "."]
+            - [null, null, "¿", "*", "&", ";", "1", "2", "3", "/"]
             - tap: Gui
               type: ghost
             - Space
             - tap: Bspace
               hold: FUN
-        right_thumbs:
             - tap: ""
               type: held
             - Shift
             - tap: Alt
               type: ghost
     NAV:
-        left:
-            - ["Win Close", "Tab Prev", "Tab Next", "Tab Close", "Vol Up"]
-            - [Ctrl, Gui, Alt, {hold: Shift, tap: Tab}, "Vol Down"]
-            - [null, "Win Prev", "Win Next", "Paste", "Play Pause"]
-        right:
-            - [Home, "Page Down", "Page Up", End, null]
-            - [Left, Down, Up, Right, Calc]
-            - [Insert, Delete, Prev, Next, null]
-        left_thumbs:
+        keys:
+            - ["Win Close", "Tab Prev", "Tab Next", "Tab Close", "Vol Up", Home, "Page Down", "Page Up", End, null]
+            - [Ctrl, Gui, Alt, {hold: Shift, tap: Tab}, "Vol Down", Left, Down, Up, Right, Calc]
+            - [null, "Win Prev", "Win Next", "Paste", "Play Pause", Insert, Delete, Prev, Next, null]
             - tap: Gui
               type: ghost
             - Ctrl
             - tap: ""
               type: held
-        right_thumbs:
             - tap: Space
               hold: FUN
             - Shift
             - tap: Alt
               type: ghost
     FUN:
-        left:
-            - [F1, F2, F3, F4, F5]
-            - [F6, F7, F8, F9, F10]
-            - [null, "Desk Prev", "Desk Next", F11, F12]
-        right:
-            - ["Caps Lock", null, DEF, CLM, GME]
-            - [BT1, BT2, BT3, BT4, BT5]
-            - ["Out USB", "Out BLE", "Print Scrn", "Pause Break", "BT CLR"]
-        left_thumbs:
+        keys:
+            - [F1, F2, F3, F4, F5, "Caps Lock", null, DEF, CLM, GME]
+            - [F6, F7, F8, F9, F10, BT1, BT2, BT3, BT4, BT5]
+            - [null, "Desk Prev", "Desk Next", F11, F12, "Out USB", "Out BLE", "Print Scrn", "Pause Break", "BT CLR"]
             - tap: Boot
               type: ghost
             - Reset
             - tap: ""
               type: held
-        right_thumbs:
             - tap: ""
               type: held
             - Reset

@@ -3,6 +3,7 @@
 import sys
 from html import escape
 from itertools import chain
+from abc import ABC, abstractmethod, abstractproperty
 from typing import Literal, Optional, Sequence, Mapping, Union
 
 import yaml
@@ -67,13 +68,13 @@ STYLE = """
 """
 
 
-class Key(BaseModel):
+class LayoutKey(BaseModel):
     tap: str
     hold: str = ""
     type: Literal[None, "held", "combo", "ghost"] = None
 
     @classmethod
-    def from_key_spec(cls, key_spec: Union[str, "Key"]) -> "Key":
+    def from_key_spec(cls, key_spec: Union[str, "LayoutKey"]) -> "LayoutKey":
         if isinstance(key_spec, str):
             return cls(tap=key_spec)
         return key_spec
@@ -81,39 +82,49 @@ class Key(BaseModel):
 
 class ComboSpec(BaseModel):
     positions: Sequence[int]
-    key: Key
+    key: LayoutKey
     layers: Sequence[str] = []
 
     @validator("key", pre=True)
     def get_key(cls, val):
-        return Key.from_key_spec(val)
-
-
-KeyRow = Sequence[Optional[Key]]
-KeyBlock = Sequence[KeyRow]
+        return LayoutKey.from_key_spec(val)
 
 
 class Layer(BaseModel):
-    left: KeyBlock = Field(..., alias="keys")
-    right: KeyBlock = []
-    left_thumbs: KeyRow = []
-    right_thumbs: KeyRow = []
+    keys: Sequence[LayoutKey]
     combos: Sequence[ComboSpec] = []
 
     class Config:
         allow_population_by_field_name = True
 
-    @validator("left", "right", pre=True)
-    def parse_key_block(cls, vals):
-        return [cls.parse_key_row(row) for row in vals]
+    @validator("keys", pre=True)
+    def parse_keys(cls, vals):
+        return [
+            LayoutKey.from_key_spec(val)
+            for val in chain.from_iterable(v if isinstance(v, Sequence) else [v] for v in vals)
+        ]
 
-    @validator("left_thumbs", "right_thumbs", pre=True)
-    def parse_key_row(cls, vals):
-        return [Key.from_key_spec(val) for val in vals]
+
+class PhysicalKey(BaseModel):
+    x_pos: float
+    y_pos: float
+    width: float = KEY_W
+    height: float = KEY_H
+    rotation: float = 0
 
 
-class Layout(BaseModel):
-    split: bool = True
+class PhysicalLayout(ABC):
+    _keys: Sequence[PhysicalKey]
+
+    def __getitem__(self, i):
+        return self._keys[i]
+
+    def __len__(self):
+        return len(self._keys)
+
+
+class DefaultLayout(PhysicalLayout, BaseModel):
+    split: bool
     rows: int
     columns: int
     thumbs: int = 0
@@ -149,9 +160,13 @@ class Layout(BaseModel):
 
 
 class KeymapData(BaseModel):
-    layout: Layout
+    layout: PhysicalLayout
     layers: Mapping[str, Layer]
     combos: Sequence[ComboSpec] = []
+
+    @validator("layout", pre=True)
+    def create_layout(cls, val):
+        pass
 
     @root_validator(skip_on_failure=True)
     def assign_combos_to_layers(cls, vals):
@@ -161,31 +176,27 @@ class KeymapData(BaseModel):
         return vals
 
     @root_validator(skip_on_failure=True)
-    def validate_split(cls, vals):
-        if not vals["layout"].split:
-            if any(layer.right or layer.left_thumbs or layer.right_thumbs for layer in vals["layers"].values()):
-                raise ValueError("Cannot have right or thumb blocks for non-split layouts")
-        return vals
-
-    @root_validator(skip_on_failure=True)
     def check_combo_pos(cls, vals):
         for layer in vals["layers"].values():
             for combo in layer.combos:
                 assert len(combo.positions) == 2, "Cannot have more than two positions for combo"
-                assert all(pos < vals["layout"].total_keys for pos in combo.positions), \
-                    "Combo positions exceed number of keys"
+                assert all(
+                    pos < len(vals["layout"]) for pos in combo.positions
+                ), "Combo positions exceed number of keys"
         return vals
 
     @root_validator(skip_on_failure=True)
     def check_dimensions(cls, vals):
         nrows, ncols, nthumbs = vals["layout"].rows, vals["layout"].columns, vals["layout"].thumbs
         for name, layer in vals["layers"].items():
-            assert len(layer.left) == nrows and (not layer.right or len(layer.right) == nrows), \
-                f"Number of rows do not match layout specification in layer {name}"
+            assert len(layer) == vals["layout"]. and (
+                not layer.right or len(layer.right) == nrows
+            ), f"Number of rows do not match layout specification in layer {name}"
             for row in chain(layer.left, layer.right):
                 assert len(row) == ncols, f"Number of columns do not match layout specification in layer {name}"
-            assert len(layer.left_thumbs) == len(layer.right_thumbs) == nthumbs, \
-                f"Number of thumb keys do not match layout specification in layer {name}"
+            assert (
+                len(layer.left_thumbs) == len(layer.right_thumbs) == nthumbs
+            ), f"Number of thumb keys do not match layout specification in layer {name}"
         return vals
 
 
@@ -220,7 +231,7 @@ class Keymap:
         print(f'<tspan x="{x}" dy="-{(len(words) - 1) * 0.6}em">{escape(words[0])}</tspan>', end="")
         for word in words[1:]:
             print(f'<tspan x="{x}" dy="1.2em">{escape(word)}</tspan>')
-        print('</text>')
+        print("</text>")
 
     def print_key(self, x: float, y: float, key: Key, width: int = 1) -> None:
         key_width = (width * KEY_W) + 2 * (width - 1) * INNER_PAD_W
@@ -233,7 +244,9 @@ class Keymap:
 
         cols = [self.layout.pos_to_col(p) for p in pos_idx]
         rows = [self.layout.pos_to_row(p) for p in pos_idx]
-        x_pos = [x + c * KEYSPACE_W + (OUTER_PAD_W if self.layout.split and c >= self.layout.columns else 0) for c in cols]
+        x_pos = [
+            x + c * KEYSPACE_W + (OUTER_PAD_W if self.layout.split and c >= self.layout.columns else 0) for c in cols
+        ]
         y_pos = [y + r * KEYSPACE_H for r in rows]
 
         x_mid, y_mid = sum(x_pos) / len(pos_idx), sum(y_pos) / len(pos_idx)
@@ -273,9 +286,7 @@ class Keymap:
                 y + self.layout.rows * KEYSPACE_H,
                 layer.left_thumbs,
             )
-            self.print_row(
-                x + self.block_w + OUTER_PAD_W, y + self.layout.rows * KEYSPACE_H, layer.right_thumbs
-            )
+            self.print_row(x + self.block_w + OUTER_PAD_W, y + self.layout.rows * KEYSPACE_H, layer.right_thumbs)
         if layer.combos:
             for combo_spec in layer.combos:
                 self.print_combo(x, y, combo_spec)
