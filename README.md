@@ -1,5 +1,9 @@
 # Keymap Visualizer
 
+> **Warning**
+>
+> This project is archived. Please check out [`keymap-drawer`](https://github.com/caksoylar/keymap-drawer) instead, which generalizes and improves upon this script.
+
 This is a visualizer for keymaps, similar to [`keymap`](https://github.com/callum-oakley/keymap) which was used as a starting point.
 Requires `python >= 3.8`, `pyyaml` and `pydantic` packages (`pip install --user pyyaml pydantic`) for reading and validating input YAML configs.
 
